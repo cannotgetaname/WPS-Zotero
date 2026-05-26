@@ -130,12 +130,13 @@ class ProxyServer:
         clientsock, clientaddr = self.server.accept()
         self.clients.append(clientaddr)
         self.input_list.append(clientsock)
-        logging.info("{} has connected".format(clientaddr))
+        logging.info("Client {} has connected".format(clientaddr))
         forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             forward.connect(('127.0.0.1', ZOTERO_PORT))
+            logging.info("Successfully connected to Zotero on port {}".format(ZOTERO_PORT))
         except socket.error as e:
-            logging.warning("Cannot connect to Zotero, is the app started?")
+            logging.warning("Cannot connect to Zotero on port {} — is Zotero running?".format(ZOTERO_PORT))
             logging.debug("Failed to connect to Zotero: {}".format(e))
             forward.close()
             # NOTE: Cannot close client sockets here for it will discard quit commands.
@@ -181,6 +182,18 @@ class ProxyServer:
                 s.sendall(data)
                 logging.info('responded to a preflight request')
                 return
+            # Inject connector identity headers and scrub browser-origin headers
+            # to bypass Zotero's browser-detection security (added in Zotero 7.0.5+).
+            # Without these, Zotero silently closes the connection with _cancelResponse().
+            headers['X-Zotero-Connector-API-Version'] = '3'
+            headers['Zotero-Allowed-Request'] = '1'
+            headers['Host'] = '127.0.0.1:{}'.format(ZOTERO_PORT)
+            # Drop browser-origin headers that trigger Zotero's isBrowser check
+            headers.pop('Origin', None)
+            headers.pop('Sec-Fetch-Site', None)
+            headers.pop('Sec-Fetch-Mode', None)
+            headers.pop('Sec-Fetch-Dest', None)
+            data = '\r\n'.join([request] + [': '.join(h) for h in headers.items()] + ['', '']).encode('utf8') + body_raw
         else:
             logging.info('message received from zotero')
             # CORS
@@ -207,7 +220,18 @@ def main(argv):
     if len(argv) < 2:
         try:
             server = ProxyServer('127.0.0.1', PROXY_PORT)
-            logging.info('proxy started!')
+            logging.info('WPS-Zotero proxy v{} started on port {}'.format(
+                '0.1.2', PROXY_PORT))
+            # Quick check: is Zotero running?
+            try:
+                test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                test_sock.settimeout(0.5)
+                test_sock.connect(('127.0.0.1', ZOTERO_PORT))
+                test_sock.close()
+                logging.info('Zotero is reachable on port {}'.format(ZOTERO_PORT))
+            except socket.error:
+                logging.warning('Zotero does not appear to be running on port {} — '
+                               'the proxy will start but requests will fail until Zotero is launched'.format(ZOTERO_PORT))
             atexit.register(lambda : logging.info('proxy stopped!'))
             server.run()
         except Exception as e:

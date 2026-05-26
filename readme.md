@@ -2,6 +2,16 @@
 
 A WPS Writer add-on for integrating with Zotero. **It supports both GNU/Linux and Windows now**. WPS is an office suite with excellent compatibility to MS Word. For scientific workers to migrate from Windows to GNU/Linux, lacking a good Word processor with citation management support has always been a great obstacle. With this add-on, you can add/edit citations in documents created with MS Word or send your documents created with WPS Writer to others to edit in MS Word. It should provide a seamless experience for people who work in an environment where everyone else use Windows and MS Word. If you encountered any problem, please open an issue, I will fix it ASAP.
 
+## Compatibility
+
+| Zotero 版本 | 状态 |
+|-------------|------|
+| 6.x | ✅ 支持 |
+| 7.0.0 ~ 7.0.5 | ✅ 支持 |
+| 7.0.5+ / 8.x / 9.x (最新) | ✅ v0.1.3 已修复 |
+
+> Zotero 7.0.5+ 新增了浏览器检测安全机制，会静默拦截来自 WPS 内嵌浏览器的 HTTP 请求。v0.1.3 修复了代理的请求头使其通过 Zotero 的身份验证。
+
 这个插件可以让你在Linux下写论文，再发给别人在Windows/MS Word下改，两边插入的引用可以共通（需要选择将引用存储为域）。**现在也支持Windows了哦**（Windows下有一些问题，翻到最后查看）。喜欢的朋友点个星星，帮忙散播一下消息，帮助更多科研狗逃脱Windows/MS Office！
 
 ## Installation
@@ -24,9 +34,21 @@ This add-on uses WPS's jsapi to control WPS Writer, and works with Zotero throug
 
 The add-on will store data to documents in a way similar as MS Word does. The only difference is that the `formattedCitation` in the field data is in XML format, while MS Word uses RTF format. However, this shouldn't pose any inconvenience for common users. Because Zotero will automatically update it for you. However, you should always store citations in fields rather than bookmarks, as the latter is not supported by this add-on.
 
+## Linux: 手动启动代理
+
+如果 WPS 无法自动启动代理（点击 Zotero 按钮没反应），手动运行：
+
+```bash
+cd ~/.local/share/Kingsoft/wps/jsaddons/wps-zotero_*/
+./start_proxy.sh          # 启动代理
+./start_proxy.sh status   # 检查状态
+```
+
 ## Common fixes
 
 If there's something wrong occurred during a transaction, the Zotero server will then be unusable, you will then be advised to restart Zotero. For other cases, restart WPS Writer and Zotero to see if the problem persists. If the problem persists, you can run `python proxy.py kill` in the package directory to quit the proxy server manually before restarting the applications. Re-installation can be tried of course if you still can't fix it.
+
+To check the proxy log: `cat ~/.wps-zotero-proxy.log`
 
 ## Known issues
 
